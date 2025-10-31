@@ -7,10 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Slider } from '@/components/ui/slider';
 import Icon from '@/components/ui/icon';
-import UploadModal from '@/components/UploadModal';
-import CreateVideoModal from '@/components/CreateVideoModal';
-import AdminPanel from '@/components/AdminPanel';
-import VerifiedBadge from '@/components/VerifiedBadge';
+
 
 interface Video {
   id: string;
@@ -21,10 +18,11 @@ interface Video {
   duration: string;
   thumbnail: string;
   verified: boolean;
-  subscribers: number;
 }
 
-const mockVideos: Video[] = [
+const mockVideos: Video[] = [];
+
+const liveStreams: Video[] = [
   {
     id: '1',
     title: 'Как создать современный сайт за 10 минут',
@@ -250,21 +248,12 @@ export default function Index() {
 
             <div className="flex items-center gap-3">
               <Button 
-                variant="ghost" 
-                size="sm" 
-                className="hover-scale gap-2"
-                onClick={() => setCreateVideoModalOpen(true)}
+                variant="default"
+                className="gradient-primary text-white hover-scale gap-2"
+                onClick={() => navigate('/studio')}
               >
-                <Icon name="Sparkles" size={20} />
-                <span className="hidden sm:inline">Создать</span>
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="hover-scale"
-                onClick={() => setUploadModalOpen(true)}
-              >
-                <Icon name="Upload" size={24} />
+                <Icon name="Radio" size={20} />
+                <span className="hidden sm:inline">Начать стрим</span>
               </Button>
               <Button variant="ghost" size="icon" className="hover-scale">
                 <Icon name="Bell" size={24} />
@@ -312,14 +301,45 @@ export default function Index() {
           </div>
         </div>
 
-        <div className={`mt-8 grid gap-6 ${
-          gridSize === 2 ? 'grid-cols-1 sm:grid-cols-2' :
-          gridSize === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
-          gridSize === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' :
-          gridSize === 5 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5' :
-          'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6'
-        }`}>
-          {mockVideos.map((video) => (
+        {liveStreams.length === 0 && mockVideos.length === 0 && (
+          <div className="mt-12 text-center space-y-6 py-12">
+            <div className="w-24 h-24 gradient-primary rounded-full flex items-center justify-center mx-auto">
+              <Icon name="Radio" size={48} className="text-white" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold">Станьте первым стримером!</h2>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Начните прямую трансляцию с захватом экрана и веб-камерой. Делитесь своими играми, творчеством или обучением.
+              </p>
+            </div>
+            <Button 
+              size="lg"
+              className="gradient-primary text-white px-8"
+              onClick={() => navigate('/studio')}
+            >
+              <Icon name="Video" size={24} className="mr-2" />
+              Открыть студию
+            </Button>
+          </div>
+        )}
+
+        {liveStreams.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Badge className="bg-destructive text-white">
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse mr-2" />
+                LIVE
+              </Badge>
+              <h2 className="text-xl font-bold">Прямые трансляции</h2>
+            </div>
+            <div className={`grid gap-6 ${
+              gridSize === 2 ? 'grid-cols-1 sm:grid-cols-2' :
+              gridSize === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
+              gridSize === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' :
+              gridSize === 5 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5' :
+              'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6'
+            }`}>
+              {liveStreams.map((video) => (
             <Card 
               key={video.id}
               onClick={() => navigate('/watch')}
@@ -350,7 +370,9 @@ export default function Index() {
                     
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
                       <span className="truncate">{video.channel}</span>
-                      <VerifiedBadge subscribers={video.subscribers} size={14} />
+                      {video.verified && (
+                        <Icon name="BadgeCheck" size={14} className="text-primary flex-shrink-0" />
+                      )}
                     </div>
                     
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -362,31 +384,74 @@ export default function Index() {
                 </div>
               </div>
             </Card>
-          ))}
-        </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        <div className="mt-12 p-8 gradient-primary rounded-2xl text-center animate-fade-in">
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Начни делиться своими видео сегодня
-          </h2>
-          <p className="text-white/90 mb-6 max-w-2xl mx-auto">
-            Присоединяйся к миллионам креаторов и делись своим контентом с миром
-          </p>
-          <Button 
-            size="lg" 
-            variant="secondary"
-            className="bg-white text-primary hover:bg-white/90 font-semibold px-8"
-          >
-            <Icon name="Upload" size={20} className="mr-2" />
-            Загрузить видео
-          </Button>
-        </div>
+        {mockVideos.length > 0 && (
+          <div className={`mt-8 space-y-4`}>
+            <h2 className="text-xl font-bold">Записи</h2>
+            <div className={`grid gap-6 ${
+              gridSize === 2 ? 'grid-cols-1 sm:grid-cols-2' :
+              gridSize === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
+              gridSize === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' :
+              gridSize === 5 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5' :
+              'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6'
+            }`}>
+              {mockVideos.map((video) => (
+                <Card 
+                  key={video.id}
+                  onClick={() => navigate('/watch')}
+                  className="group overflow-hidden border-muted hover:border-primary transition-all duration-300 cursor-pointer hover-scale animate-fade-in bg-card"
+                >
+                  <div className="relative aspect-video overflow-hidden">
+                    <div 
+                      className="w-full h-full transition-transform duration-500 group-hover:scale-110"
+                      style={{ background: video.thumbnail }}
+                    />
+                    <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 backdrop-blur-sm rounded text-xs font-medium text-white">
+                      {video.duration}
+                    </div>
+                  </div>
+                  
+                  <div className="p-4">
+                    <div className="flex gap-3">
+                      <Avatar className="h-10 w-10 flex-shrink-0">
+                        <div className="gradient-primary w-full h-full flex items-center justify-center text-white font-bold text-sm">
+                          {video.channel.charAt(0)}
+                        </div>
+                      </Avatar>
+                      
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm leading-tight line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+                          {video.title}
+                        </h3>
+                        
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                          <span className="truncate">{video.channel}</span>
+                          {video.verified && (
+                            <Icon name="BadgeCheck" size={14} className="text-primary flex-shrink-0" />
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{video.views} просмотров</span>
+                          <span>•</span>
+                          <span>{video.time}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+
       </main>
       </div>
-      
-      <UploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} />
-      <CreateVideoModal open={createVideoModalOpen} onClose={() => setCreateVideoModalOpen(false)} />
-      <AdminPanel open={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} />
     </div>
   );
 }
