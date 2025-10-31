@@ -1,5 +1,7 @@
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
 import Icon from '@/components/ui/icon';
 
 interface HeaderProps {
@@ -9,6 +11,9 @@ interface HeaderProps {
 }
 
 export default function Header({ searchQuery, setSearchQuery, onStudioClick }: HeaderProps) {
+  const navigate = useNavigate();
+  const userString = localStorage.getItem('user');
+  const user = userString ? JSON.parse(userString) : null;
   return (
     <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/80 border-b border-border">
       <div className="container mx-auto px-4 py-4">
@@ -40,20 +45,33 @@ export default function Header({ searchQuery, setSearchQuery, onStudioClick }: H
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="default"
-              className="gradient-primary text-white hover:opacity-90 transition-opacity"
-              onClick={onStudioClick}
-            >
-              <Icon name="Video" size={20} className="mr-2" />
-              Создать
-            </Button>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Icon name="Bell" size={24} />
-            </Button>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Icon name="User" size={24} />
-            </Button>
+            {user ? (
+              <>
+                <Button
+                  variant="default"
+                  className="gradient-primary text-white hover:opacity-90 transition-opacity"
+                  onClick={onStudioClick}
+                >
+                  <Icon name="Video" size={20} className="mr-2" />
+                  Создать
+                </Button>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Icon name="Bell" size={24} />
+                </Button>
+                <Avatar className="h-10 w-10 cursor-pointer">
+                  <img src={user.avatar_url} alt={user.display_name} className="w-full h-full rounded-full" />
+                </Avatar>
+              </>
+            ) : (
+              <Button
+                variant="default"
+                className="gradient-primary text-white hover:opacity-90 transition-opacity"
+                onClick={() => navigate('/auth')}
+              >
+                <Icon name="LogIn" size={20} className="mr-2" />
+                Войти
+              </Button>
+            )}
           </div>
         </div>
       </div>
