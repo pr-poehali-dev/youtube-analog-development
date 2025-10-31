@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Slider } from '@/components/ui/slider';
 import Icon from '@/components/ui/icon';
 import UploadModal from '@/components/UploadModal';
+import CreateVideoModal from '@/components/CreateVideoModal';
 
 interface Video {
   id: string;
@@ -113,6 +114,7 @@ export default function Index() {
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [createVideoModalOpen, setCreateVideoModalOpen] = useState(false);
   const [gridSize, setGridSize] = useState(4);
 
   return (
@@ -235,6 +237,15 @@ export default function Index() {
             </div>
 
             <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="hover-scale gap-2"
+                onClick={() => setCreateVideoModalOpen(true)}
+              >
+                <Icon name="Sparkles" size={20} />
+                <span className="hidden sm:inline">Создать</span>
+              </Button>
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -364,6 +375,7 @@ export default function Index() {
       </div>
       
       <UploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} />
+      <CreateVideoModal open={createVideoModalOpen} onClose={() => setCreateVideoModalOpen(false)} />
     </div>
   );
 }
