@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import Icon from '@/components/ui/icon';
+import UploadModal from '@/components/UploadModal';
 
 interface Comment {
   id: string;
@@ -91,6 +92,7 @@ export default function Watch() {
   const [comment, setComment] = useState('');
   const [showDescription, setShowDescription] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -169,6 +171,14 @@ export default function Watch() {
             </div>
 
             <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="hover-scale"
+                onClick={() => setUploadModalOpen(true)}
+              >
+                <Icon name="Upload" size={24} />
+              </Button>
               <Button variant="ghost" size="icon" className="hover-scale">
                 <Icon name="Bell" size={24} />
               </Button>
@@ -402,6 +412,8 @@ export default function Watch() {
         </div>
       </div>
       </div>
+      
+      <UploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} />
     </div>
   );
 }

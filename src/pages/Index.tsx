@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
+import { Slider } from '@/components/ui/slider';
 import Icon from '@/components/ui/icon';
+import UploadModal from '@/components/UploadModal';
 
 interface Video {
   id: string;
@@ -110,6 +112,8 @@ export default function Index() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [gridSize, setGridSize] = useState(4);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -231,7 +235,12 @@ export default function Index() {
             </div>
 
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="hover-scale">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="hover-scale"
+                onClick={() => setUploadModalOpen(true)}
+              >
                 <Icon name="Upload" size={24} />
               </Button>
               <Button variant="ghost" size="icon" className="hover-scale">
@@ -248,7 +257,8 @@ export default function Index() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide flex-1">
           {categories.map((category) => (
             <Button
               key={category}
@@ -265,9 +275,27 @@ export default function Index() {
               {category}
             </Button>
           ))}
+          </div>
+          <div className="flex items-center gap-3 ml-4">
+            <Icon name="LayoutGrid" size={20} className="text-muted-foreground" />
+            <Slider
+              value={[gridSize]}
+              onValueChange={(value) => setGridSize(value[0])}
+              min={2}
+              max={6}
+              step={1}
+              className="w-32"
+            />
+          </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className={`mt-8 grid gap-6 ${
+          gridSize === 2 ? 'grid-cols-1 sm:grid-cols-2' :
+          gridSize === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
+          gridSize === 4 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' :
+          gridSize === 5 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5' :
+          'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6'
+        }`}>
           {mockVideos.map((video) => (
             <Card 
               key={video.id}
@@ -334,6 +362,8 @@ export default function Index() {
         </div>
       </main>
       </div>
+      
+      <UploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} />
     </div>
   );
 }
