@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "name": "Get all streams",
+      "method": "GET",
+      "path": "/?action=streams",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "type"
+    },
+    {
+      "name": "Get all users",
+      "method": "GET",
+      "path": "/?action=users",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "type"
+    }
+  ]
+}

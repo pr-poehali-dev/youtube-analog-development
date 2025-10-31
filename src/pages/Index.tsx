@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,15 +10,21 @@ import Icon from '@/components/ui/icon';
 
 
 interface Video {
-  id: string;
+  id: number;
   title: string;
   channel: string;
+  display_name: string;
   views: string;
   time: string;
   duration: string;
   thumbnail: string;
   verified: boolean;
+  like_count: number;
+  is_live: boolean;
+  avatar_url?: string;
 }
+
+const API_URL = 'https://functions.poehali.dev/18a29ac1-33e9-4589-bad5-77fc1d3286a7';
 
 const mockVideos: Video[] = [];
 
@@ -122,10 +128,82 @@ export default function Index() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Все');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [createVideoModalOpen, setCreateVideoModalOpen] = useState(false);
-  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [gridSize, setGridSize] = useState(4);
+  const [streams, setStreams] = useState<Video[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadStreams();
+    loadUsers();
+  }, [selectedCategory]);
+
+  const loadStreams = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}?action=streams${selectedCategory !== 'Все' ? '&category=' + selectedCategory : ''}`);
+      const data = await response.json();
+      
+      const formattedStreams = data.map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        channel: s.username,
+        display_name: s.display_name,
+        views: formatViews(s.view_count),
+        time: formatTime(s.started_at || s.created_at),
+        duration: s.duration ? formatDuration(s.duration) : 'LIVE',
+        thumbnail: `https://api.dicebear.com/7.x/shapes/svg?seed=${s.id}`,
+        verified: s.is_verified,
+        like_count: s.like_count,
+        is_live: s.is_live,
+        avatar_url: s.avatar_url
+      }));
+      
+      setStreams(formattedStreams);
+    } catch (error) {
+      console.error('Error loading streams:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const response = await fetch(`${API_URL}?action=users`);
+      const data = await response.json();
+      setUsers(data);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
+
+  const formatViews = (count: number) => {
+    if (count >= 1000000) return `${(count / 1000000).toFixed(1)}М`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}К`;
+    return count.toString();
+  };
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)} дней назад`;
+    return `${Math.floor(diff / 604800)} нед назад`;
+  };
+
+  const liveStreamsData = streams.filter(s => s.is_live);
+  const videosData = streams.filter(s => !s.is_live);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -191,20 +269,21 @@ export default function Index() {
               </div>
 
               <div className="pt-4 border-t border-border">
-                <h3 className="px-3 mb-2 text-sm font-semibold text-muted-foreground">Подписки</h3>
+                <h3 className="px-3 mb-2 text-sm font-semibold text-muted-foreground">Популярные каналы</h3>
                 <div className="space-y-1">
-                  {['WebDev Pro', 'Код Мастер', 'Frontend Magic', 'GameDev School'].map((channel) => (
+                  {users.slice(0, 8).map((user) => (
                     <Button
-                      key={channel}
+                      key={user.id}
                       variant="ghost"
                       className="w-full justify-start gap-3 hover:bg-muted"
                     >
                       <Avatar className="h-6 w-6">
-                        <div className="gradient-primary w-full h-full flex items-center justify-center text-white font-bold text-xs">
-                          {channel.charAt(0)}
-                        </div>
+                        <img src={user.avatar_url} alt={user.display_name} className="w-full h-full rounded-full" />
                       </Avatar>
-                      <span className="truncate text-sm">{channel}</span>
+                      <span className="truncate text-sm">{user.display_name}</span>
+                      {user.is_verified && (
+                        <Icon name="BadgeCheck" size={14} className="text-primary ml-auto" />
+                      )}
                     </Button>
                   ))}
                 </div>
@@ -301,7 +380,11 @@ export default function Index() {
           </div>
         </div>
 
-        {liveStreams.length === 0 && mockVideos.length === 0 && (
+        {loading ? (
+          <div className="mt-12 text-center py-12">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          </div>
+        ) : liveStreamsData.length === 0 && videosData.length === 0 && (
           <div className="mt-12 text-center space-y-6 py-12">
             <div className="w-24 h-24 gradient-primary rounded-full flex items-center justify-center mx-auto">
               <Icon name="Radio" size={48} className="text-white" />
@@ -323,7 +406,7 @@ export default function Index() {
           </div>
         )}
 
-        {liveStreams.length > 0 && (
+        {liveStreamsData.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <Badge className="bg-destructive text-white">
@@ -339,8 +422,8 @@ export default function Index() {
               gridSize === 5 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5' :
               'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6'
             }`}>
-              {liveStreams.map((video) => (
-            <Card 
+              {liveStreamsData.map((video) => (
+                <Card 
               key={video.id}
               onClick={() => navigate('/watch')}
               className="group overflow-hidden border-muted hover:border-primary transition-all duration-300 cursor-pointer hover-scale animate-fade-in bg-card"
@@ -350,17 +433,19 @@ export default function Index() {
                   className="w-full h-full transition-transform duration-500 group-hover:scale-110"
                   style={{ background: video.thumbnail }}
                 />
-                <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 backdrop-blur-sm rounded text-xs font-medium text-white">
-                  {video.duration}
+                <Badge className="absolute top-2 left-2 bg-destructive text-white">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse mr-1" />
+                  LIVE
+                </Badge>
+                <div className="absolute bottom-2 right-2 px-2 py-1 bg-destructive/90 backdrop-blur-sm rounded text-xs font-medium text-white">
+                  {video.views} зрителей
                 </div>
               </div>
               
               <div className="p-4">
                 <div className="flex gap-3">
                   <Avatar className="h-10 w-10 flex-shrink-0">
-                    <div className="gradient-primary w-full h-full flex items-center justify-center text-white font-bold text-sm">
-                      {video.channel.charAt(0)}
-                    </div>
+                    <img src={video.avatar_url} alt={video.display_name} className="w-full h-full rounded-full" />
                   </Avatar>
                   
                   <div className="flex-1 min-w-0">
@@ -369,7 +454,7 @@ export default function Index() {
                     </h3>
                     
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                      <span className="truncate">{video.channel}</span>
+                      <span className="truncate">{video.display_name}</span>
                       {video.verified && (
                         <Icon name="BadgeCheck" size={14} className="text-primary flex-shrink-0" />
                       )}
@@ -389,7 +474,7 @@ export default function Index() {
           </div>
         )}
 
-        {mockVideos.length > 0 && (
+        {videosData.length > 0 && (
           <div className={`mt-8 space-y-4`}>
             <h2 className="text-xl font-bold">Записи</h2>
             <div className={`grid gap-6 ${
@@ -399,7 +484,7 @@ export default function Index() {
               gridSize === 5 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5' :
               'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6'
             }`}>
-              {mockVideos.map((video) => (
+              {videosData.map((video) => (
                 <Card 
                   key={video.id}
                   onClick={() => navigate('/watch')}
@@ -418,9 +503,7 @@ export default function Index() {
                   <div className="p-4">
                     <div className="flex gap-3">
                       <Avatar className="h-10 w-10 flex-shrink-0">
-                        <div className="gradient-primary w-full h-full flex items-center justify-center text-white font-bold text-sm">
-                          {video.channel.charAt(0)}
-                        </div>
+                        <img src={video.avatar_url} alt={video.display_name} className="w-full h-full rounded-full" />
                       </Avatar>
                       
                       <div className="flex-1 min-w-0">
@@ -429,7 +512,7 @@ export default function Index() {
                         </h3>
                         
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                          <span className="truncate">{video.channel}</span>
+                          <span className="truncate">{video.display_name}</span>
                           {video.verified && (
                             <Icon name="BadgeCheck" size={14} className="text-primary flex-shrink-0" />
                           )}
