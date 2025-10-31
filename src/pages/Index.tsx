@@ -9,6 +9,8 @@ import { Slider } from '@/components/ui/slider';
 import Icon from '@/components/ui/icon';
 import UploadModal from '@/components/UploadModal';
 import CreateVideoModal from '@/components/CreateVideoModal';
+import AdminPanel from '@/components/AdminPanel';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface Video {
   id: string;
@@ -19,6 +21,7 @@ interface Video {
   duration: string;
   thumbnail: string;
   verified: boolean;
+  subscribers: number;
 }
 
 const mockVideos: Video[] = [
@@ -30,7 +33,8 @@ const mockVideos: Video[] = [
     time: '2 дня назад',
     duration: '12:34',
     thumbnail: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    verified: true
+    verified: true,
+    subscribers: 1500000
   },
   {
     id: '2',
@@ -40,7 +44,8 @@ const mockVideos: Video[] = [
     time: '1 неделю назад',
     duration: '45:12',
     thumbnail: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    verified: true
+    verified: true,
+    subscribers: 250000
   },
   {
     id: '3',
@@ -50,7 +55,8 @@ const mockVideos: Video[] = [
     time: '3 дня назад',
     duration: '18:27',
     thumbnail: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    verified: true
+    verified: true,
+    subscribers: 50000
   },
   {
     id: '4',
@@ -60,7 +66,8 @@ const mockVideos: Video[] = [
     time: '5 дней назад',
     duration: '1:23:45',
     thumbnail: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    verified: false
+    verified: false,
+    subscribers: 5000
   },
   {
     id: '5',
@@ -70,7 +77,8 @@ const mockVideos: Video[] = [
     time: '1 день назад',
     duration: '32:18',
     thumbnail: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
-    verified: true
+    verified: true,
+    subscribers: 3000000
   },
   {
     id: '6',
@@ -80,7 +88,8 @@ const mockVideos: Video[] = [
     time: '4 дня назад',
     duration: '25:56',
     thumbnail: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-    verified: true
+    verified: true,
+    subscribers: 15000
   },
   {
     id: '7',
@@ -90,7 +99,8 @@ const mockVideos: Video[] = [
     time: '2 недели назад',
     duration: '52:30',
     thumbnail: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
-    verified: true
+    verified: true,
+    subscribers: 500000
   },
   {
     id: '8',
@@ -100,7 +110,8 @@ const mockVideos: Video[] = [
     time: '1 неделю назад',
     duration: '15:42',
     thumbnail: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-    verified: false
+    verified: false,
+    subscribers: 800
   }
 ];
 
@@ -115,6 +126,7 @@ export default function Index() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [createVideoModalOpen, setCreateVideoModalOpen] = useState(false);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [gridSize, setGridSize] = useState(4);
 
   return (
@@ -257,7 +269,7 @@ export default function Index() {
               <Button variant="ghost" size="icon" className="hover-scale">
                 <Icon name="Bell" size={24} />
               </Button>
-              <Avatar className="h-10 w-10 cursor-pointer hover-scale">
+              <Avatar className="h-10 w-10 cursor-pointer hover-scale" onClick={() => setAdminPanelOpen(true)}>
                 <div className="gradient-accent w-full h-full flex items-center justify-center text-white font-bold">
                   А
                 </div>
@@ -338,9 +350,7 @@ export default function Index() {
                     
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
                       <span className="truncate">{video.channel}</span>
-                      {video.verified && (
-                        <Icon name="BadgeCheck" size={14} className="text-primary flex-shrink-0" />
-                      )}
+                      <VerifiedBadge subscribers={video.subscribers} size={14} />
                     </div>
                     
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -376,6 +386,7 @@ export default function Index() {
       
       <UploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} />
       <CreateVideoModal open={createVideoModalOpen} onClose={() => setCreateVideoModalOpen(false)} />
+      <AdminPanel open={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} />
     </div>
   );
 }

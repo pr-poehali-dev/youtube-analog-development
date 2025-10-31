@@ -8,6 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import Icon from '@/components/ui/icon';
 import UploadModal from '@/components/UploadModal';
 import CreateVideoModal from '@/components/CreateVideoModal';
+import AdminPanel from '@/components/AdminPanel';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 interface Comment {
   id: string;
@@ -95,6 +97,7 @@ export default function Watch() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [createVideoModalOpen, setCreateVideoModalOpen] = useState(false);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -193,7 +196,7 @@ export default function Watch() {
               <Button variant="ghost" size="icon" className="hover-scale">
                 <Icon name="Bell" size={24} />
               </Button>
-              <Avatar className="h-10 w-10 cursor-pointer hover-scale">
+              <Avatar className="h-10 w-10 cursor-pointer hover-scale" onClick={() => setAdminPanelOpen(true)}>
                 <div className="gradient-accent w-full h-full flex items-center justify-center text-white font-bold">
                   А
                 </div>
@@ -231,9 +234,9 @@ export default function Watch() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">WebDev Pro</span>
-                    <Icon name="BadgeCheck" size={16} className="text-primary" />
+                    <VerifiedBadge subscribers={1500000} size={16} />
                   </div>
-                  <p className="text-sm text-muted-foreground">1.2M подписчиков</p>
+                  <p className="text-sm text-muted-foreground">1.5M подписчиков</p>
                 </div>
                 <Button
                   onClick={() => setSubscribed(!subscribed)}
@@ -361,7 +364,7 @@ export default function Watch() {
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-sm">{comment.author}</span>
                         {comment.verified && (
-                          <Icon name="BadgeCheck" size={14} className="text-primary" />
+                          <VerifiedBadge subscribers={1200000} size={14} />
                         )}
                         <span className="text-xs text-muted-foreground">{comment.time}</span>
                       </div>
@@ -426,6 +429,7 @@ export default function Watch() {
       
       <UploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} />
       <CreateVideoModal open={createVideoModalOpen} onClose={() => setCreateVideoModalOpen(false)} />
+      <AdminPanel open={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} />
     </div>
   );
 }
