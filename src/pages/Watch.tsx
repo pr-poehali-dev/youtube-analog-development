@@ -90,25 +90,80 @@ export default function Watch() {
   const [subscribed, setSubscribed] = useState(false);
   const [comment, setComment] = useState('');
   const [showDescription, setShowDescription] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border">
+    <div className="min-h-screen bg-background flex">
+      <aside className={`fixed left-0 top-0 h-screen bg-card border-r border-border transition-all duration-300 z-40 ${
+        sidebarOpen ? 'w-64' : 'w-0'
+      } overflow-y-auto overflow-x-hidden`}>
+        <div className="p-4 space-y-2 w-64">
+          <div className="space-y-1">
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 hover:bg-muted"
+              onClick={() => navigate('/')}
+            >
+              <Icon name="Home" size={24} />
+              <span>Главная</span>
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 hover:bg-muted"
+            >
+              <Icon name="TrendingUp" size={24} />
+              <span>В тренде</span>
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 hover:bg-muted"
+            >
+              <Icon name="Users" size={24} />
+              <span>Подписки</span>
+            </Button>
+          </div>
+
+          <div className="pt-4 border-t border-border">
+            <h3 className="px-3 mb-2 text-sm font-semibold text-muted-foreground">Вы</h3>
+            <div className="space-y-1">
+              <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-muted">
+                <Icon name="History" size={24} />
+                <span>История</span>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-muted">
+                <Icon name="Play" size={24} />
+                <span>Ваши видео</span>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-muted">
+                <Icon name="Clock" size={24} />
+                <span>Смотреть позже</span>
+              </Button>
+              <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-muted">
+                <Icon name="ThumbsUp" size={24} />
+                <span>Понравилось</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div className="flex-1">
+      <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/80 border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={() => navigate('/')}
+                onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="hover-scale"
               >
-                <Icon name="ArrowLeft" size={24} />
+                <Icon name="Menu" size={24} />
               </Button>
-              <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center cursor-pointer" onClick={() => navigate('/')}>
                 <Icon name="Play" size={24} className="text-white" />
               </div>
-              <h1 className="text-2xl font-bold gradient-primary bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold gradient-primary bg-clip-text text-transparent cursor-pointer" onClick={() => navigate('/')}>
                 VideoHub
               </h1>
             </div>
@@ -345,6 +400,7 @@ export default function Watch() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
