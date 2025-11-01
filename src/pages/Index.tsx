@@ -114,7 +114,7 @@ export default function Index() {
   };
 
   const handleVideoClick = (videoId: number) => {
-    navigate('/watch');
+    navigate(`/watch?v=${videoId}`);
   };
 
   return (

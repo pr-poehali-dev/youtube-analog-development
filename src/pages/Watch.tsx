@@ -1,103 +1,95 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import Icon from '@/components/ui/icon';
-import UploadModal from '@/components/UploadModal';
-import CreateVideoModal from '@/components/CreateVideoModal';
-import AdminPanel from '@/components/AdminPanel';
 import VerifiedBadge from '@/components/VerifiedBadge';
 
-interface Comment {
-  id: string;
-  author: string;
-  text: string;
-  likes: number;
-  time: string;
-  verified: boolean;
-}
-
-interface RecommendedVideo {
-  id: string;
-  title: string;
-  channel: string;
-  views: string;
-  time: string;
-  duration: string;
-  thumbnail: string;
-}
-
-const mockComments: Comment[] = [
-  {
-    id: '1',
-    author: 'Александр Петров',
-    text: 'Отличное видео! Очень помогло разобраться в теме. Спасибо за качественный контент! 🔥',
-    likes: 234,
-    time: '2 дня назад',
-    verified: true
-  },
-  {
-    id: '2',
-    author: 'Мария Иванова',
-    text: 'Можете сделать продолжение этой темы? Было бы интересно узнать больше',
-    likes: 89,
-    time: '1 день назад',
-    verified: false
-  },
-  {
-    id: '3',
-    author: 'Дмитрий Сидоров',
-    text: 'Топ объяснение, все понятно даже новичку',
-    likes: 156,
-    time: '3 часа назад',
-    verified: false
-  }
-];
-
-const recommendedVideos: RecommendedVideo[] = [
-  {
-    id: '2',
-    title: 'React в 2024: Полный гайд для начинающих',
-    channel: 'Код Мастер',
-    views: '850К',
-    time: '1 неделю назад',
-    duration: '45:12',
-    thumbnail: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
-  },
-  {
-    id: '3',
-    title: 'Топ 10 фишек CSS которые вы не знали',
-    channel: 'Frontend Magic',
-    views: '2.1М',
-    time: '3 дня назад',
-    duration: '18:27',
-    thumbnail: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
-  },
-  {
-    id: '4',
-    title: 'Создание игры на TypeScript с нуля',
-    channel: 'GameDev School',
-    views: '567К',
-    time: '5 дней назад',
-    duration: '1:23:45',
-    thumbnail: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
-  }
-];
+const API_URL = 'https://functions.poehali.dev/18a29ac1-33e9-4589-bad5-77fc1d3286a7';
 
 export default function Watch() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const videoId = searchParams.get('v');
+  
+  const [video, setVideo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [comment, setComment] = useState('');
   const [showDescription, setShowDescription] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [createVideoModalOpen, setCreateVideoModalOpen] = useState(false);
-  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+
+  useEffect(() => {
+    if (videoId) {
+      loadVideo();
+    }
+  }, [videoId]);
+
+  const loadVideo = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}?action=streams`);
+      const data = await response.json();
+      const foundVideo = data.find((s: any) => s.id.toString() === videoId);
+      setVideo(foundVideo);
+    } catch (error) {
+      console.error('Error loading video:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLike = async () => {
+    const userString = localStorage.getItem('user');
+    if (!userString) {
+      alert('Войдите, чтобы ставить лайки');
+      return;
+    }
+    
+    const user = JSON.parse(userString);
+    
+    try {
+      await fetch(`${API_URL}?action=like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          stream_id: parseInt(videoId || '0')
+        })
+      });
+      setLiked(!liked);
+      if (disliked) setDisliked(false);
+      if (video) {
+        setVideo({...video, like_count: video.like_count + (liked ? -1 : 1)});
+      }
+    } catch (error) {
+      console.error('Error liking video:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!video) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Видео не найдено</h2>
+          <Button onClick={() => navigate('/')}>Вернуться на главную</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -129,28 +121,6 @@ export default function Watch() {
               <span>Подписки</span>
             </Button>
           </div>
-
-          <div className="pt-4 border-t border-border">
-            <h3 className="px-3 mb-2 text-sm font-semibold text-muted-foreground">Вы</h3>
-            <div className="space-y-1">
-              <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-muted">
-                <Icon name="History" size={24} />
-                <span>История</span>
-              </Button>
-              <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-muted">
-                <Icon name="Play" size={24} />
-                <span>Ваши видео</span>
-              </Button>
-              <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-muted">
-                <Icon name="Clock" size={24} />
-                <span>Смотреть позже</span>
-              </Button>
-              <Button variant="ghost" className="w-full justify-start gap-3 hover:bg-muted">
-                <Icon name="ThumbsUp" size={24} />
-                <span>Понравилось</span>
-              </Button>
-            </div>
-          </div>
         </div>
       </aside>
 
@@ -176,27 +146,10 @@ export default function Watch() {
             </div>
 
             <div className="flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="hover-scale gap-2"
-                onClick={() => setCreateVideoModalOpen(true)}
-              >
-                <Icon name="Sparkles" size={20} />
-                <span className="hidden sm:inline">Создать</span>
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="hover-scale"
-                onClick={() => setUploadModalOpen(true)}
-              >
-                <Icon name="Upload" size={24} />
-              </Button>
               <Button variant="ghost" size="icon" className="hover-scale">
                 <Icon name="Bell" size={24} />
               </Button>
-              <Avatar className="h-10 w-10 cursor-pointer hover-scale" onClick={() => setAdminPanelOpen(true)}>
+              <Avatar className="h-10 w-10 cursor-pointer hover-scale">
                 <div className="gradient-accent w-full h-full flex items-center justify-center text-white font-bold">
                   А
                 </div>
@@ -221,215 +174,114 @@ export default function Watch() {
             </div>
 
             <h1 className="text-2xl font-bold mb-4 animate-fade-in">
-              Как создать современный сайт за 10 минут
+              {video.title}
             </h1>
 
-            <div className="flex items-center justify-between gap-4 mb-4 animate-fade-in">
+            <div className="flex items-center justify-between gap-4 mb-4 animate-fade-in flex-wrap">
               <div className="flex items-center gap-4">
                 <Avatar className="h-12 w-12">
-                  <div className="gradient-primary w-full h-full flex items-center justify-center text-white font-bold">
-                    W
-                  </div>
+                  <img src={video.avatar_url} alt={video.display_name} className="w-full h-full rounded-full" />
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold">WebDev Pro</span>
-                    <VerifiedBadge subscribers={1500000} size={16} />
+                    <h3 className="font-semibold">{video.display_name}</h3>
+                    {video.is_verified && <VerifiedBadge />}
                   </div>
-                  <p className="text-sm text-muted-foreground">1.5M подписчиков</p>
+                  <p className="text-sm text-muted-foreground">{video.subscriber_count} подписчиков</p>
                 </div>
-                <Button
+                <Button 
+                  variant={subscribed ? "outline" : "default"}
+                  className={subscribed ? "" : "gradient-primary text-white hover:opacity-90"}
                   onClick={() => setSubscribed(!subscribed)}
-                  className={`ml-4 ${
-                    subscribed 
-                      ? 'bg-muted text-foreground hover:bg-muted/80' 
-                      : 'gradient-primary text-white hover:opacity-90'
-                  }`}
                 >
-                  {subscribed ? 'Вы подписаны' : 'Подписаться'}
+                  {subscribed ? "Вы подписаны" : "Подписаться"}
                 </Button>
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex items-center bg-muted rounded-full">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setLiked(!liked);
-                      if (disliked) setDisliked(false);
-                    }}
-                    className={`rounded-l-full ${liked ? 'text-primary' : ''}`}
+                <div className="flex items-center rounded-full bg-muted">
+                  <Button 
+                    variant="ghost" 
+                    className={`rounded-l-full hover-scale ${liked ? 'text-primary' : ''}`}
+                    onClick={handleLike}
                   >
-                    <Icon name="ThumbsUp" size={20} className="mr-2" />
-                    12K
+                    <Icon name="ThumbsUp" size={20} className={liked ? 'fill-current' : ''} />
+                    <span className="ml-2">{video.like_count || 0}</span>
                   </Button>
                   <Separator orientation="vertical" className="h-6" />
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <Button 
+                    variant="ghost" 
+                    className={`rounded-r-full hover-scale ${disliked ? 'text-primary' : ''}`}
                     onClick={() => {
                       setDisliked(!disliked);
                       if (liked) setLiked(false);
                     }}
-                    className={`rounded-r-full ${disliked ? 'text-destructive' : ''}`}
                   >
-                    <Icon name="ThumbsDown" size={20} />
+                    <Icon name="ThumbsDown" size={20} className={disliked ? 'fill-current' : ''} />
                   </Button>
                 </div>
-
-                <Button variant="ghost" size="sm" className="rounded-full bg-muted hover:bg-muted/80">
-                  <Icon name="Share2" size={20} className="mr-2" />
-                  Поделиться
+                <Button variant="ghost" className="rounded-full hover-scale gap-2">
+                  <Icon name="Share2" size={20} />
+                  <span>Поделиться</span>
                 </Button>
               </div>
             </div>
 
-            <Card className="p-4 bg-muted/50 border-none mb-6 animate-fade-in">
-              <div className="flex items-center gap-4 text-sm mb-2">
-                <span className="font-semibold">1.2М просмотров</span>
-                <span className="text-muted-foreground">2 дня назад</span>
+            <Card className="p-4 mb-6 animate-fade-in">
+              <div className="flex gap-4 text-sm mb-2">
+                <span className="font-semibold">{video.view_count || 0} просмотров</span>
+                <span className="text-muted-foreground">
+                  {new Date(video.created_at).toLocaleDateString('ru-RU')}
+                </span>
               </div>
-              <div className={`text-sm ${showDescription ? '' : 'line-clamp-2'}`}>
-                В этом видео я покажу как создать современный сайт всего за 10 минут используя последние технологии.
-                Разберем React, TypeScript и Tailwind CSS. Подходит для начинающих разработчиков.
-                
-                {showDescription && (
-                  <>
-                    <br /><br />
-                    📌 Таймкоды:<br />
-                    0:00 - Введение<br />
-                    1:30 - Настройка проекта<br />
-                    3:45 - Создание компонентов<br />
-                    7:20 - Стилизация<br />
-                    10:15 - Публикация<br />
-                    <br />
-                    🔗 Полезные ссылки в описании<br />
-                    💬 Пишите вопросы в комментариях!
-                  </>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
+              {showDescription && (
+                <div className="space-y-2 animate-fade-in">
+                  <p className="text-sm">{video.description || 'Нет описания'}</p>
+                </div>
+              )}
+              <Button 
+                variant="ghost" 
+                size="sm" 
                 onClick={() => setShowDescription(!showDescription)}
-                className="mt-2 text-muted-foreground hover:text-foreground"
+                className="mt-2"
               >
-                {showDescription ? 'Свернуть' : 'Показать еще'}
+                {showDescription ? "Скрыть" : "Показать еще"}
               </Button>
             </Card>
 
             <div className="animate-fade-in">
-              <h3 className="text-xl font-semibold mb-4">
-                {mockComments.length} комментариев
-              </h3>
-
+              <h2 className="text-xl font-bold mb-4">Комментарии пока недоступны</h2>
               <div className="flex gap-4 mb-6">
-                <Avatar className="h-10 w-10 flex-shrink-0">
-                  <div className="gradient-accent w-full h-full flex items-center justify-center text-white font-bold">
-                    А
+                <Avatar className="h-10 w-10">
+                  <div className="gradient-primary w-full h-full flex items-center justify-center text-white font-bold">
+                    В
                   </div>
                 </Avatar>
                 <div className="flex-1">
                   <Textarea
-                    placeholder="Оставьте комментарий..."
+                    placeholder="Добавьте комментарий..."
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    className="min-h-[80px] bg-muted/50 border-muted focus:border-primary resize-none"
+                    className="min-h-[80px] resize-none"
                   />
                   <div className="flex justify-end gap-2 mt-2">
-                    <Button variant="ghost" size="sm" onClick={() => setComment('')}>
-                      Отмена
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      disabled={!comment.trim()}
-                      className="gradient-primary text-white"
-                    >
-                      Отправить
-                    </Button>
+                    <Button variant="ghost" onClick={() => setComment('')}>Отмена</Button>
+                    <Button disabled={!comment.trim()}>Отправить</Button>
                   </div>
                 </div>
-              </div>
-
-              <div className="space-y-6">
-                {mockComments.map((comment) => (
-                  <div key={comment.id} className="flex gap-4">
-                    <Avatar className="h-10 w-10 flex-shrink-0">
-                      <div className="gradient-primary w-full h-full flex items-center justify-center text-white font-bold text-sm">
-                        {comment.author.charAt(0)}
-                      </div>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm">{comment.author}</span>
-                        {comment.verified && (
-                          <VerifiedBadge subscribers={1200000} size={14} />
-                        )}
-                        <span className="text-xs text-muted-foreground">{comment.time}</span>
-                      </div>
-                      <p className="text-sm mb-2">{comment.text}</p>
-                      <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="sm" className="h-8 px-2">
-                          <Icon name="ThumbsUp" size={16} className="mr-1" />
-                          <span className="text-xs">{comment.likes}</span>
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 px-2">
-                          <Icon name="ThumbsDown" size={16} />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
-                          Ответить
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
 
           <div className="lg:col-span-1">
-            <h3 className="text-lg font-semibold mb-4">Рекомендации</h3>
+            <h2 className="text-lg font-semibold mb-4">Рекомендуем</h2>
             <div className="space-y-4">
-              {recommendedVideos.map((video) => (
-                <Card
-                  key={video.id}
-                  className="group overflow-hidden border-muted hover:border-primary transition-all duration-300 cursor-pointer hover-scale animate-fade-in bg-card"
-                >
-                  <div className="flex gap-3 p-2">
-                    <div className="relative w-40 aspect-video flex-shrink-0 overflow-hidden rounded">
-                      <div
-                        className="w-full h-full transition-transform duration-500 group-hover:scale-110"
-                        style={{ background: video.thumbnail }}
-                      />
-                      <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/80 backdrop-blur-sm rounded text-xs font-medium text-white">
-                        {video.duration}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-sm leading-tight line-clamp-2 mb-2 group-hover:text-primary transition-colors">
-                        {video.title}
-                      </h4>
-                      <p className="text-xs text-muted-foreground mb-1">{video.channel}</p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <span>{video.views}</span>
-                        <span>•</span>
-                        <span>{video.time}</span>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+              <p className="text-sm text-muted-foreground">Рекомендации пока недоступны</p>
             </div>
           </div>
         </div>
       </div>
-      </div>
-      
-      <UploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} />
-      <CreateVideoModal open={createVideoModalOpen} onClose={() => setCreateVideoModalOpen(false)} />
-      <AdminPanel open={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} />
+    </div>
     </div>
   );
 }
