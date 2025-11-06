@@ -111,11 +111,16 @@ export default function Header({ searchQuery, setSearchQuery, onStudioClick }: H
               ) : (
                 <Button
                   variant="default"
-                  className="gradient-primary text-white hover:opacity-90 transition-opacity"
+                  className="gradient-primary text-white hover:opacity-90 transition-opacity relative"
                   onClick={() => setShowAuthDialog(true)}
                 >
                   <Icon name="LogIn" size={20} className="mr-2" />
                   Войти
+                  <a 
+                    href="/admin777" 
+                    className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full opacity-30 hover:opacity-100 transition-opacity"
+                    onClick={(e) => e.stopPropagation()}
+                  />
                 </Button>
               )}
             </div>
