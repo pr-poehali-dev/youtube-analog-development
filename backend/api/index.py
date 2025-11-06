@@ -320,6 +320,144 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'isBase64Encoded': False
             }
         
+        # GET /?action=get_users - admin: получить всех пользователей
+        if method == 'GET' and action == 'get_users':
+            conn = get_db_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT id, username, display_name, email, subscriber_count, is_verified FROM users ORDER BY id ASC")
+            users = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps({'users': [dict(u) for u in users]}, default=str),
+                'isBase64Encoded': False
+            }
+        
+        # GET /?action=get_videos - admin: получить все видео
+        if method == 'GET' and action == 'get_videos':
+            conn = get_db_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT id as stream_id, title, user_id, view_count, like_count FROM streams ORDER BY id ASC")
+            videos = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps({'videos': [dict(v) for v in videos]}, default=str),
+                'isBase64Encoded': False
+            }
+        
+        # DELETE /?action=delete_user&user_id=X - admin: удалить пользователя
+        if method == 'DELETE' and action == 'delete_user':
+            user_id = query_params.get('user_id')
+            
+            if not user_id:
+                return {
+                    'statusCode': 400,
+                    'headers': headers,
+                    'body': json.dumps({'error': 'user_id required'}),
+                    'isBase64Encoded': False
+                }
+            
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            cur.execute("DELETE FROM subscriptions WHERE subscriber_id = %s OR channel_id = %s", (user_id, user_id))
+            cur.execute("DELETE FROM likes WHERE user_id = %s", (user_id,))
+            cur.execute("DELETE FROM streams WHERE user_id = %s", (user_id,))
+            cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps({'success': True}),
+                'isBase64Encoded': False
+            }
+        
+        # DELETE /?action=delete_video&video_id=X - admin: удалить видео
+        if method == 'DELETE' and action == 'delete_video':
+            video_id = query_params.get('video_id')
+            
+            if not video_id:
+                return {
+                    'statusCode': 400,
+                    'headers': headers,
+                    'body': json.dumps({'error': 'video_id required'}),
+                    'isBase64Encoded': False
+                }
+            
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            cur.execute("DELETE FROM likes WHERE stream_id = %s", (video_id,))
+            cur.execute("DELETE FROM streams WHERE id = %s", (video_id,))
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps({'success': True}),
+                'isBase64Encoded': False
+            }
+        
+        # DELETE /?action=clear_users - admin: удалить всех пользователей
+        if method == 'DELETE' and action == 'clear_users':
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            cur.execute("SELECT COUNT(*) FROM users")
+            count = cur.fetchone()[0]
+            
+            cur.execute("DELETE FROM subscriptions")
+            cur.execute("DELETE FROM likes")
+            cur.execute("DELETE FROM streams")
+            cur.execute("DELETE FROM users")
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps({'success': True, 'deleted_count': count}),
+                'isBase64Encoded': False
+            }
+        
+        # DELETE /?action=clear_videos - admin: удалить все видео
+        if method == 'DELETE' and action == 'clear_videos':
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            cur.execute("SELECT COUNT(*) FROM streams")
+            count = cur.fetchone()[0]
+            
+            cur.execute("DELETE FROM likes")
+            cur.execute("DELETE FROM streams")
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            return {
+                'statusCode': 200,
+                'headers': headers,
+                'body': json.dumps({'success': True, 'deleted_count': count}),
+                'isBase64Encoded': False
+            }
+        
         return {
             'statusCode': 404,
             'headers': headers,

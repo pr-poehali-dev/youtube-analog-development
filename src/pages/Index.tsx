@@ -168,6 +168,15 @@ export default function Index() {
             </>
           )}
         </main>
+        
+        <footer className="py-8 text-center">
+          <a 
+            href="/admin777" 
+            className="text-xs text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+          >
+            ·
+          </a>
+        </footer>
       </div>
     </div>
   );
