@@ -1,0 +1,33 @@
+{
+  "tests": [
+    {
+      "name": "Upload video successfully",
+      "method": "POST",
+      "headers": {
+        "X-User-Id": "1"
+      },
+      "body": {
+        "title": "Test Video",
+        "description": "Test description",
+        "video_url": "https://example.com/video.mp4",
+        "thumbnail_url": "https://example.com/thumb.jpg",
+        "duration": 120
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "video_id": "number",
+        "message": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Upload without user ID",
+      "method": "POST",
+      "body": {
+        "title": "Test Video"
+      },
+      "expectedStatus": 401,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

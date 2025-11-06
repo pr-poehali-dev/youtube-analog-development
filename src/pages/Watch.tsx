@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import Icon from '@/components/ui/icon';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import { toast } from '@/components/ui/use-toast';
 
 const API_URL = 'https://functions.poehali.dev/18a29ac1-33e9-4589-bad5-77fc1d3286a7';
 
@@ -220,7 +221,18 @@ export default function Watch() {
                     <Icon name="ThumbsDown" size={20} className={disliked ? 'fill-current' : ''} />
                   </Button>
                 </div>
-                <Button variant="ghost" className="rounded-full hover-scale gap-2">
+                <Button 
+                  variant="ghost" 
+                  className="rounded-full hover-scale gap-2"
+                  onClick={() => {
+                    const url = window.location.href;
+                    navigator.clipboard.writeText(url);
+                    toast({
+                      title: 'Ссылка скопирована!',
+                      description: 'Поделитесь видео с друзьями'
+                    });
+                  }}
+                >
                   <Icon name="Share2" size={20} />
                   <span>Поделиться</span>
                 </Button>

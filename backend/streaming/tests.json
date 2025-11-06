@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "name": "Create stream successfully",
+      "method": "POST",
+      "headers": {
+        "X-User-Id": "1"
+      },
+      "queryStringParameters": {
+        "action": "create_stream"
+      },
+      "body": {
+        "title": "My Live Stream",
+        "description": "Testing live streaming"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "stream_id": "number",
+        "stream_key": "string",
+        "stream_url": "string",
+        "watch_url": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

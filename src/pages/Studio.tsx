@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -6,432 +6,363 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import Icon from '@/components/ui/icon';
+import { toast } from '@/components/ui/use-toast';
+
+const UPLOAD_API = 'https://functions.poehali.dev/57bb62f3-e128-42b9-b0de-f6c7593eb90c';
+const STREAMING_API = 'https://functions.poehali.dev/af4093ad-3609-4ffe-98f6-0511a52bf036';
 
 export default function Studio() {
   const navigate = useNavigate();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const screenRef = useRef<HTMLVideoElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
-
-  const [isRecording, setIsRecording] = useState(false);
-  const [isLive, setIsLive] = useState(false);
-  const [cameraEnabled, setCameraEnabled] = useState(false);
-  const [screenEnabled, setScreenEnabled] = useState(false);
-  const [micEnabled, setMicEnabled] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [viewers, setViewers] = useState(0);
-
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [uploading, setUploading] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoTitle, setVideoTitle] = useState('');
+  const [videoDescription, setVideoDescription] = useState('');
+  const [videoPreview, setVideoPreview] = useState<string>('');
+  
   const [streamTitle, setStreamTitle] = useState('');
   const [streamDescription, setStreamDescription] = useState('');
-  const [streamCategory, setStreamCategory] = useState('');
+  const [streamKey, setStreamKey] = useState('');
+  const [streamCreated, setStreamCreated] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording || isLive) {
-      interval = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-        if (isLive) {
-          setViewers(prev => Math.max(0, prev + Math.floor(Math.random() * 3) - 1));
-        }
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isRecording, isLive]);
+  const userString = localStorage.getItem('user');
+  const user = userString ? JSON.parse(userString) : null;
 
-  const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 1280, height: 720 }, 
-        audio: micEnabled 
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setCameraEnabled(true);
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('video/')) {
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+      if (!videoTitle) {
+        setVideoTitle(file.name.replace(/\.[^/.]+$/, ''));
       }
-    } catch (err) {
-      console.error('Ошибка доступа к камере:', err);
-      alert('Не удалось получить доступ к камере. Проверьте разрешения браузера.');
+    } else {
+      alert('Пожалуйста, выберите видеофайл');
     }
   };
 
-  const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
-      setCameraEnabled(false);
+  const uploadVideo = async () => {
+    if (!videoFile || !videoTitle.trim() || !user) {
+      alert('Заполните все поля и войдите в систему');
+      return;
     }
-  };
 
-  const startScreenShare = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ 
-        video: { width: 1920, height: 1080 },
-        audio: true
-      });
-      if (screenRef.current) {
-        screenRef.current.srcObject = stream;
-        setScreenEnabled(true);
-      }
-    } catch (err) {
-      console.error('Ошибка захвата экрана:', err);
-      alert('Не удалось захватить экран.');
-    }
-  };
-
-  const stopScreenShare = () => {
-    if (screenRef.current?.srcObject) {
-      const stream = screenRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      screenRef.current.srcObject = null;
-      setScreenEnabled(false);
-    }
-  };
-
-  const startRecording = async () => {
-    const streams: MediaStream[] = [];
+    setUploading(true);
     
-    if (screenRef.current?.srcObject) {
-      streams.push(screenRef.current.srcObject as MediaStream);
-    }
-    if (videoRef.current?.srcObject) {
-      streams.push(videoRef.current.srcObject as MediaStream);
-    }
+    try {
+      const response = await fetch(UPLOAD_API, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': user.id.toString()
+        },
+        body: JSON.stringify({
+          title: videoTitle,
+          description: videoDescription,
+          video_url: videoPreview,
+          thumbnail_url: videoPreview,
+          duration: 0
+        })
+      });
 
-    if (streams.length === 0) {
-      alert('Включите хотя бы один источник (камеру или экран)');
-      return;
-    }
-
-    const combinedStream = new MediaStream();
-    streams.forEach(stream => {
-      stream.getTracks().forEach(track => combinedStream.addTrack(track));
-    });
-
-    mediaRecorderRef.current = new MediaRecorder(combinedStream, {
-      mimeType: 'video/webm;codecs=vp9'
-    });
-
-    recordedChunksRef.current = [];
-
-    mediaRecorderRef.current.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        recordedChunksRef.current.push(event.data);
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast({
+          title: 'Успешно!',
+          description: 'Видео загружено на платформу'
+        });
+        
+        const url = `${window.location.origin}/watch?v=${data.video_id}`;
+        setShareUrl(url);
+        
+        setTimeout(() => navigate(`/watch?v=${data.video_id}`), 2000);
+      } else {
+        alert(`Ошибка: ${data.error}`);
       }
-    };
-
-    mediaRecorderRef.current.onstop = () => {
-      const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `recording-${Date.now()}.webm`;
-      a.click();
-    };
-
-    mediaRecorderRef.current.start();
-    setIsRecording(true);
-    setRecordingTime(0);
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+    } catch (err) {
+      console.error('Ошибка загрузки:', err);
+      alert('Не удалось загрузить видео');
+    } finally {
+      setUploading(false);
     }
   };
 
-  const startLiveStream = () => {
-    if (!streamTitle.trim()) {
-      alert('Укажите название стрима');
+  const createStream = async () => {
+    if (!streamTitle.trim() || !user) {
+      alert('Укажите название стрима и войдите в систему');
       return;
     }
-    if (!screenEnabled && !cameraEnabled) {
-      alert('Включите хотя бы один источник (камеру или экран)');
-      return;
+
+    try {
+      const response = await fetch(`${STREAMING_API}?action=create_stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': user.id.toString()
+        },
+        body: JSON.stringify({
+          title: streamTitle,
+          description: streamDescription
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setStreamKey(data.stream_key);
+        setStreamCreated(true);
+        setShareUrl(`${window.location.origin}${data.watch_url}`);
+        
+        toast({
+          title: 'Стрим создан!',
+          description: 'Используйте stream key для подключения'
+        });
+      } else {
+        alert(`Ошибка: ${data.error}`);
+      }
+    } catch (err) {
+      console.error('Ошибка создания стрима:', err);
+      alert('Не удалось создать стрим');
     }
-    setIsLive(true);
-    setViewers(1);
-    setRecordingTime(0);
   };
 
-  const stopLiveStream = () => {
-    setIsLive(false);
-    setViewers(0);
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: 'Скопировано!',
+      description: 'Ссылка скопирована в буфер обмена'
+    });
   };
 
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
-                <Icon name="ArrowLeft" size={24} />
-              </Button>
-              <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
-                <Icon name="Video" size={24} className="text-white" />
-              </div>
-              <h1 className="text-2xl font-bold gradient-primary bg-clip-text text-transparent">
-                Студия
-              </h1>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+              <Icon name="ArrowLeft" size={24} />
+            </Button>
+            <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
+              <Icon name="Video" size={24} className="text-white" />
             </div>
-            
-            {(isRecording || isLive) && (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 px-4 py-2 bg-destructive/20 rounded-full">
-                  <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
-                  <span className="font-mono font-semibold">{formatTime(recordingTime)}</span>
-                </div>
-                {isLive && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-primary/20 rounded-full">
-                    <Icon name="Users" size={16} />
-                    <span className="font-semibold">{viewers}</span>
-                  </div>
-                )}
-              </div>
-            )}
+            <h1 className="text-2xl font-bold gradient-primary bg-clip-text text-transparent">
+              Студия создателя
+            </h1>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <Card className="p-6 bg-card">
-              <div className="aspect-video bg-muted rounded-lg overflow-hidden relative">
-                {screenEnabled && (
-                  <video
-                    ref={screenRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
-                  />
-                )}
-                {cameraEnabled && (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={`${screenEnabled ? 'absolute bottom-4 right-4 w-64 h-36' : 'w-full h-full'} rounded-lg border-2 border-primary object-cover`}
-                  />
-                )}
-                {!screenEnabled && !cameraEnabled && (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="text-center space-y-4">
-                      <Icon name="VideoOff" size={48} className="mx-auto text-muted-foreground" />
-                      <p className="text-muted-foreground">Включите камеру или захват экрана</p>
-                    </div>
-                  </div>
-                )}
-                
-                {isLive && (
-                  <Badge className="absolute top-4 left-4 bg-destructive text-white">
-                    <div className="w-2 h-2 bg-white rounded-full animate-pulse mr-2" />
-                    LIVE
-                  </Badge>
-                )}
-              </div>
+      <div className="container mx-auto px-4 py-8 max-w-5xl">
+        <Tabs defaultValue="upload" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="upload">
+              <Icon name="Upload" size={18} className="mr-2" />
+              Загрузить видео
+            </TabsTrigger>
+            <TabsTrigger value="stream">
+              <Icon name="Radio" size={18} className="mr-2" />
+              Создать стрим
+            </TabsTrigger>
+          </TabsList>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button
-                  variant={cameraEnabled ? 'default' : 'outline'}
-                  onClick={cameraEnabled ? stopCamera : startCamera}
-                  disabled={isRecording || isLive}
-                  className={cameraEnabled ? 'bg-primary' : ''}
-                >
-                  <Icon name={cameraEnabled ? 'Video' : 'VideoOff'} size={20} className="mr-2" />
-                  Камера
-                </Button>
+          <TabsContent value="upload" className="mt-6">
+            <Card className="p-6">
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Загрузить видео</h2>
+                  <p className="text-muted-foreground">Поделитесь своим видео с миром</p>
+                </div>
 
-                <Button
-                  variant={screenEnabled ? 'default' : 'outline'}
-                  onClick={screenEnabled ? stopScreenShare : startScreenShare}
-                  disabled={isRecording || isLive}
-                  className={screenEnabled ? 'bg-primary' : ''}
-                >
-                  <Icon name={screenEnabled ? 'Monitor' : 'MonitorOff'} size={20} className="mr-2" />
-                  Экран
-                </Button>
-
-                <Button
-                  variant={micEnabled ? 'default' : 'outline'}
-                  onClick={() => setMicEnabled(!micEnabled)}
-                  disabled={isRecording || isLive}
-                  className={micEnabled ? 'bg-primary' : ''}
-                >
-                  <Icon name={micEnabled ? 'Mic' : 'MicOff'} size={20} className="mr-2" />
-                  Микрофон
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-card">
-              <Tabs defaultValue="record">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                  <TabsTrigger value="record">Запись</TabsTrigger>
-                  <TabsTrigger value="stream">Стрим</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="record" className="space-y-4">
-                  {!isRecording ? (
-                    <Button
-                      onClick={startRecording}
-                      className="w-full gradient-primary text-white h-14 text-lg"
-                      disabled={isLive}
-                    >
-                      <Icon name="Circle" size={24} className="mr-2" />
-                      Начать запись
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={stopRecording}
-                      variant="destructive"
-                      className="w-full h-14 text-lg"
-                    >
-                      <Icon name="Square" size={24} className="mr-2" />
-                      Остановить запись
-                    </Button>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="stream" className="space-y-4">
+                {videoPreview ? (
                   <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="stream-title">Название стрима</Label>
-                      <Input
-                        id="stream-title"
-                        value={streamTitle}
-                        onChange={(e) => setStreamTitle(e.target.value)}
-                        placeholder="Играю в игры / Изучаю программирование"
-                        disabled={isLive}
-                        className="mt-2"
-                      />
+                    <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                      <video src={videoPreview} controls className="w-full h-full" />
                     </div>
-
-                    <div>
-                      <Label htmlFor="stream-category">Категория</Label>
-                      <Input
-                        id="stream-category"
-                        value={streamCategory}
-                        onChange={(e) => setStreamCategory(e.target.value)}
-                        placeholder="Игры, Программирование, Музыка..."
-                        disabled={isLive}
-                        className="mt-2"
-                      />
-                    </div>
-
-                    {!isLive ? (
-                      <Button
-                        onClick={startLiveStream}
-                        className="w-full gradient-primary text-white h-14 text-lg"
-                        disabled={isRecording}
-                      >
-                        <Icon name="Radio" size={24} className="mr-2" />
-                        Начать трансляцию
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={stopLiveStream}
-                        variant="destructive"
-                        className="w-full h-14 text-lg"
-                      >
-                        <Icon name="Square" size={24} className="mr-2" />
-                        Завершить трансляцию
-                      </Button>
-                    )}
+                    <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                      <Icon name="RefreshCw" size={18} className="mr-2" />
+                      Выбрать другое видео
+                    </Button>
                   </div>
-                </TabsContent>
-              </Tabs>
-            </Card>
-          </div>
-
-          <div className="space-y-4">
-            <Card className="p-6 bg-card">
-              <h3 className="font-semibold text-lg mb-4">Ваш уровень</h3>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 gradient-primary rounded-full flex items-center justify-center">
-                    <span className="text-2xl font-bold text-white">12</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold">Стример</span>
-                      <span className="text-sm text-muted-foreground">1240 / 2000 XP</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full gradient-primary" style={{ width: '62%' }} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-muted-foreground">Достижения</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { icon: 'Trophy', name: 'Первый стрим', unlocked: true },
-                      { icon: 'Users', name: '100 зрителей', unlocked: true },
-                      { icon: 'Clock', name: '10 часов', unlocked: false },
-                      { icon: 'Star', name: 'VIP статус', unlocked: false },
-                      { icon: 'Heart', name: '1000 лайков', unlocked: false },
-                      { icon: 'Zap', name: 'Стример года', unlocked: false }
-                    ].map((achievement, i) => (
-                      <div
-                        key={i}
-                        className={`aspect-square rounded-lg flex items-center justify-center ${
-                          achievement.unlocked
-                            ? 'gradient-primary'
-                            : 'bg-muted'
-                        }`}
-                        title={achievement.name}
-                      >
-                        <Icon
-                          name={achievement.icon as any}
-                          size={24}
-                          className={achievement.unlocked ? 'text-white' : 'text-muted-foreground'}
-                        />
+                ) : (
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="aspect-video border-2 border-dashed border-border rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors bg-muted/30"
+                  >
+                    <div className="text-center space-y-3">
+                      <Icon name="Upload" size={48} className="mx-auto text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Нажмите для выбора видео</p>
+                        <p className="text-sm text-muted-foreground">MP4, WebM, MOV до 500MB</p>
                       </div>
-                    ))}
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoSelect}
+                  className="hidden"
+                />
+
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="video-title">Название</Label>
+                    <Input
+                      id="video-title"
+                      value={videoTitle}
+                      onChange={(e) => setVideoTitle(e.target.value)}
+                      placeholder="Как назовем видео?"
+                      className="mt-2"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="video-desc">Описание</Label>
+                    <Textarea
+                      id="video-desc"
+                      value={videoDescription}
+                      onChange={(e) => setVideoDescription(e.target.value)}
+                      placeholder="Расскажите о чем видео..."
+                      className="mt-2 min-h-32"
+                    />
                   </div>
                 </div>
-              </div>
-            </Card>
 
-            <Card className="p-6 bg-card">
-              <h3 className="font-semibold text-lg mb-4">Статистика</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Всего стримов</span>
-                  <span className="font-semibold">23</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Часов в эфире</span>
-                  <span className="font-semibold">87.5</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Подписчики</span>
-                  <span className="font-semibold">1,240</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Средний онлайн</span>
-                  <span className="font-semibold">142</span>
-                </div>
+                {shareUrl && (
+                  <Alert>
+                    <Icon name="Link" size={18} />
+                    <AlertDescription className="flex items-center justify-between">
+                      <span className="text-sm truncate mr-2">{shareUrl}</span>
+                      <Button size="sm" variant="outline" onClick={() => copyToClipboard(shareUrl)}>
+                        <Icon name="Copy" size={14} className="mr-1" />
+                        Копировать
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <Button 
+                  onClick={uploadVideo} 
+                  disabled={!videoFile || !videoTitle || uploading}
+                  className="w-full gradient-primary text-white"
+                >
+                  {uploading ? (
+                    <>
+                      <Icon name="Loader2" size={18} className="mr-2 animate-spin" />
+                      Загрузка...
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="Upload" size={18} className="mr-2" />
+                      Опубликовать видео
+                    </>
+                  )}
+                </Button>
               </div>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="stream" className="mt-6">
+            <Card className="p-6">
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Создать стрим</h2>
+                  <p className="text-muted-foreground">Транслируйте в прямом эфире</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="stream-title">Название стрима</Label>
+                    <Input
+                      id="stream-title"
+                      value={streamTitle}
+                      onChange={(e) => setStreamTitle(e.target.value)}
+                      placeholder="О чем будет стрим?"
+                      className="mt-2"
+                      disabled={streamCreated}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="stream-desc">Описание</Label>
+                    <Textarea
+                      id="stream-desc"
+                      value={streamDescription}
+                      onChange={(e) => setStreamDescription(e.target.value)}
+                      placeholder="Подробности о стриме..."
+                      className="mt-2 min-h-32"
+                      disabled={streamCreated}
+                    />
+                  </div>
+                </div>
+
+                {streamCreated && streamKey && (
+                  <div className="space-y-4">
+                    <Alert>
+                      <Icon name="Key" size={18} />
+                      <AlertDescription>
+                        <div className="space-y-2">
+                          <p className="font-medium">Stream Key (не показывайте никому!):</p>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 p-2 bg-muted rounded text-sm truncate">{streamKey}</code>
+                            <Button size="sm" variant="outline" onClick={() => copyToClipboard(streamKey)}>
+                              <Icon name="Copy" size={14} />
+                            </Button>
+                          </div>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+
+                    <Alert>
+                      <Icon name="Link" size={18} />
+                      <AlertDescription>
+                        <div className="space-y-2">
+                          <p className="font-medium">Ссылка для зрителей:</p>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 p-2 bg-muted rounded text-sm truncate">{shareUrl}</code>
+                            <Button size="sm" variant="outline" onClick={() => copyToClipboard(shareUrl)}>
+                              <Icon name="Copy" size={14} />
+                            </Button>
+                          </div>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="p-4 bg-muted rounded-lg space-y-3">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <Icon name="Info" size={18} />
+                        Инструкция для OBS Studio
+                      </h3>
+                      <ol className="text-sm space-y-2 ml-6 list-decimal text-muted-foreground">
+                        <li>Откройте OBS Studio</li>
+                        <li>Настройки → Поток</li>
+                        <li>Сервер: <code className="text-xs bg-background px-1 py-0.5 rounded">rtmp://stream.example.com/live</code></li>
+                        <li>Ключ потока: используйте ваш Stream Key</li>
+                        <li>Нажмите "Начать трансляцию"</li>
+                      </ol>
+                    </div>
+                  </div>
+                )}
+
+                <Button 
+                  onClick={createStream}
+                  disabled={!streamTitle || streamCreated}
+                  className="w-full gradient-primary text-white"
+                >
+                  <Icon name="Radio" size={18} className="mr-2" />
+                  {streamCreated ? 'Стрим создан' : 'Создать стрим'}
+                </Button>
+              </div>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
